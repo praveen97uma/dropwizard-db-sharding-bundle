@@ -29,6 +29,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ClassUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
+import org.hibernate.Criteria;
 import org.hibernate.LockMode;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -115,6 +116,11 @@ public class LookupDao<T> implements ShardedDao<T> {
          */
         List<T> select(DetachedCriteria criteria) {
             return list(criteria.getExecutableCriteria(currentSession()));
+        }
+
+        Number project(DetachedCriteria criteria) {
+            return  (Number)criteria.getExecutableCriteria(currentSession())
+                    .uniqueResult();
         }
 
         long count(DetachedCriteria criteria) {
@@ -301,6 +307,16 @@ public class LookupDao<T> implements ShardedDao<T> {
                 throw new RuntimeException(e);
             }
         }).flatMap(Collection::stream).collect(Collectors.toList());
+    }
+
+    public List<Number> project(DetachedCriteria criteria) {
+        return daos.stream().map(dao -> {
+            try {
+                return Transactions.execute(dao.sessionFactory, true, dao::project, criteria);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }).collect(Collectors.toList());
     }
 
     /**
